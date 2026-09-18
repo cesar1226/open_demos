@@ -1,0 +1,39 @@
+resources:
+  jobs:
+    device_manuals_rag:
+      name: device-manuals-rag-pipeline
+
+      # Runs on serverless compute (no cluster block) so it's portable across
+      # workspaces - required functions (ai_parse_document, ai_prep_search,
+      # ai_query, Vector Search) are all available on serverless.
+      tasks:
+        - task_key: parse_documents
+          environment_key: serverless_env
+          notebook_task:
+            notebook_path: ../job_code/02-parse pdf for ai search.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              volume: ${var.device_volume}
+
+        - task_key: index_vector_search
+          depends_on:
+            - task_key: parse_documents
+          environment_key: serverless_env
+          notebook_task:
+            notebook_path: ../job_code/03-sync ai search.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              volume: ${var.device_volume}
+              vector_search_endpoint: ${resources.vector_search_endpoints.technical_manuals_vs_endpoint.name}
+
+      # Pin the serverless environment at the job level so it overrides whatever
+      # base environment the notebooks were exported with (portable across workspaces).
+      environments:
+        - environment_key: serverless_env
+          spec:
+            client: "3"
+
+      queue:
+        enabled: true

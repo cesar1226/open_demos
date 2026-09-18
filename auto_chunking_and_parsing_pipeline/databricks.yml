@@ -1,0 +1,47 @@
+# Databricks Asset Bundle: Technical manuals RAG pipeline
+# Two jobs (device + gov), each a two-task pipeline:
+#   (1) parse the PDF manuals, (2) index them in Vector Search.
+#
+# Catalog, schema and the two volumes are exposed as bundle variables (see README.md).
+bundle:
+  name: technical_manuals_rag_pipeline
+  engine: direct
+
+include:
+  - resources/*.yml
+
+# Keep the deployment lean - don't upload local data / explanation assets.
+sync:
+  exclude:
+    - "job_code/explanation/**"
+
+variables:
+  catalog:
+    description: Unity Catalog used for tables, the volume and the Vector Search index.
+    default: stable_classic_6kvrb7_catalog
+  schema:
+    description: Schema (database) inside the catalog.
+    default: cesar_cordoba
+  device_volume:
+    description: Volume (folder) inside the schema holding the device manuals.
+    default: device_manuals
+  gov_volume:
+    description: Volume (folder) inside the schema holding the government manuals.
+    default: gov_manual
+
+targets:
+  # Default target - the environment used to build the demo.
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-stable-classic-6kvrb7.cloud.databricks.com
+    variables:
+      catalog: stable_classic_6kvrb7_catalog
+      schema: cesar_cordoba
+
+
+  prod:
+    mode: production
+    # workspace:
+    #   host: https://...
