@@ -1,0 +1,4 @@
+resources:
+  experiments:
+    agent_traces:
+      name: /Users/${workspace.current_user.userName}/technical-manuals-agent-${bundle.target}

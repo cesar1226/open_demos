@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedDeclarations": false,
+    "baseUrl": ".",
+    "paths": {
+      "@chat-template/core": ["./packages/core/src/index.ts"],
+      "@chat-template/utils": ["./packages/utils/src/index.ts"],
+      "@chat-template/auth": ["./packages/auth/src/index.ts"],
+      "@chat-template/ai-sdk-providers": [
+        "./packages/ai-sdk-providers/src/index.ts"
+      ],
+      "@chat-template/db": ["./packages/db/src/index.ts"]
+    }
+  },
+  // This root config is a shared BASE that workspaces extend (e.g. server/).
+  // It must NOT compile the sub-projects' files: client/, server/ and
+  // packages/* each have their own tsconfig (with the right `jsx` and `@/*`
+  // paths). Leaving `include` unset made this config greedily pull in every
+  // .tsx under the repo and type-check it without `jsx`/`@/*`, flooding the
+  // editor with false errors. So it owns only the root-level tooling scripts
+  // that belong to no workspace (they use neither `jsx` nor `@/*`). Extenders
+  // keep their own `include`.
+  "include": ["scripts/**/*.ts", "drizzle.config.ts", "playwright.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

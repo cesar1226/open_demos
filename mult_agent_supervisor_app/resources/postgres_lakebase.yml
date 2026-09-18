@@ -1,0 +1,23 @@
+resources:
+  postgres_projects:
+    technical_manuals_agent_memory_db:
+      project_id: ${var.lakebase_project_id}
+      display_name: "Technical Manuals Agent Memory"
+      pg_version: 17
+
+  # Lakebase requires an owner role when creating a database. Declaring it
+  # keeps the bundle portable across users (the auto-created project-owner
+  # role id is derived from whoever deploys).
+  postgres_roles:
+    agent_memory_owner:
+      parent: ${resources.postgres_projects.technical_manuals_agent_memory_db.id}/branches/production
+      role_id: agent-memory-owner
+      postgres_role: agent_memory_owner
+
+  # Explicit database with a stable id the app can grant and connect to.
+  postgres_databases:
+    agent_memory:
+      parent: ${resources.postgres_projects.technical_manuals_agent_memory_db.id}/branches/production
+      database_id: agent-memory
+      postgres_database: agent_memory
+      role: ${resources.postgres_roles.agent_memory_owner.id}

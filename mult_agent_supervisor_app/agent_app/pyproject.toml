@@ -1,0 +1,95 @@
+[project]
+name = "agent-server"
+version = "0.1.0"
+description = "Multi-agent orchestrator that queries other agents, Genie spaces, and serving endpoints"
+readme = "README.md"
+authors = [
+    { name = "Agent Developer", email = "developer@example.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.129.0",
+    "uvicorn>=0.41.0",
+    # [memory] adds the Lakebase-backed AsyncDatabricksSession used for history.
+    "databricks-openai[memory]>=0.15.0,<0.16.0",
+    "databricks-sdk>=0.79.0,<0.80.0",
+    "databricks-agents>=1.9.3",
+    "mlflow>=3.10.0,<3.13.0",
+    "openai-agents>=0.4.1",
+    # mcp 2.0 dropped GetSessionIdCallback, which databricks_openai.agents.mcp_server
+    # imports at module load — an unpinned resolve installs 2.0 and the server cannot
+    # even import. Stay on 1.x until databricks-openai supports mcp 2.
+    "mcp>=1.9.0,<2.0.0",
+    "python-dotenv>=1.2.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.25.0",
+    "uuid-utils>=0.10.0",
+    # Cap openai below 3.x: the agent (AsyncDatabricksOpenAI + openai-agents)
+    # is written against the 2.x client; 3.x is a breaking API change.
+    "openai>=2,<3",
+]
+
+# NOTE ON DEPLOY RELIABILITY
+# Databricks Apps install these deps from pypi-proxy.cloud.databricks.com, a
+# lazy cache of PyPI: the first request for a wheel it hasn't backfilled yet can
+# 404 and fail the build. The durable fix is to stay on a version set whose
+# wheels are ALREADY cached on the proxy (i.e. were downloaded by a prior
+# successful deploy). These constraints mirror the proven, deploy-tested set
+# from demos/my_code/apps/bobabricks_multi_agent (same template). Do NOT
+# introduce fresh pins to chase a single deploy — that only shifts the failure
+# to the next uncached wheel. Instead run `uv run check-proxy` after `uv lock`
+# to compare against the known-good set before deploying.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[dependency-groups]
+dev = [
+    "hatchling>=1.28.0",
+    "pytest>=9.0.2",
+]
+
+setup = [
+    "ruamel.yaml>=0.18.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "setup"]
+
+# The Apps build-edge cache lacks bleeding-edge (2026) wheels, 404ing them one by
+# one. Resolve the whole graph as of a date just after our newest floor
+# (databricks-openai 0.15.0, 2026-04-22) so every transitive dep lands on an
+# older, widely-deployed version that is already warm on the build nodes.
+exclude-newer = "2026-05-01T00:00:00Z"
+
+# Cap transitive deps to versions known-cached on pypi-proxy (each 404'd during
+# recent deploys). uv's constraint-dependencies is an array of PEP 508 strings.
+constraint-dependencies = [
+    # databricks-connect ships separate wheels per Python line; pin the exact
+    # versions known cached on the Apps build edge (16.1.6 404s; 16.1.7 works).
+    "databricks-connect==16.1.7; python_version < '3.12'",
+    "databricks-connect==18.0.3; python_version >= '3.12'",
+    "pyarrow<23.0.1",
+    "botocore<1.43.29",
+    "cryptography<46.0.7",
+    # grpcio resolved to 1.81.0 while grpcio-status only reaches 1.71.2 — that
+    # ahead-of-ecosystem version isn't in the Apps build-edge cache and 404s.
+    # Align grpcio with grpcio-status's 1.71.x series (also long-cached).
+    "grpcio<1.72",
+    "joblib<1.5.3",
+    "pillow<12.2.0",
+    # wcwidth 0.8.1 (proxy-only, anomalous) 404s at the Apps build edge; pin to
+    # the canonical stable, which is cached from prior platform deploys.
+    "wcwidth==0.2.13",
+]
+
+
+[project.scripts]
+quickstart = "scripts.quickstart:main"
+start-app = "scripts.start_app:main"
+start-server = "agent_server.start_server:main"
+agent-evaluate = "agent_server.evaluate_agent:evaluate"
+discover-tools = "scripts.discover_tools:main"
+preflight = "scripts.preflight:main"
+check-proxy = "scripts.check_proxy:main"

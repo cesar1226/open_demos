@@ -1,0 +1,65 @@
+resources:
+  apps:
+    agent_openai_agents_sdk_multiagent:
+      name: "agent-openai-multiagent"
+      description: "Multi-agent orchestrator that queries other agents, Genie spaces, and serving endpoints"
+      source_code_path: ../agent_app
+      # On-behalf-of user authorization: Genie agent-mode queries run as the
+      # requesting user (their permissions), so no per-space service-principal
+      # grant is needed for the Genie tools.
+      user_api_scopes:
+        - genie
+      config:
+        command: ["uv", "run", "start-app"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: "databricks"
+          - name: MLFLOW_REGISTRY_URI
+            value: "databricks-uc"
+          - name: API_PROXY
+            value: "http://localhost:8000/invocations"
+          - name: CHAT_APP_PORT
+            value: "3000"
+          - name: CHAT_PROXY_TIMEOUT_SECONDS
+            value: "300"
+          - name: MLFLOW_EXPERIMENT_ID
+            value_from: "experiment"
+          # Genie agents the app exposes as tools (client-provided ids + optional
+          # name/description). One orchestrator tool per entry.
+          - name: GENIE_AGENTS
+            value: ${var.genie_agents}
+          # Org id (?o=) used to build the Genie embed URLs in the "Agents" tab.
+          # DATABRICKS_HOST is injected by the Apps platform automatically.
+          - name: DATABRICKS_ORG_ID
+            value: ${var.genie_embed_org_id}
+          # Default effort: true = agent mode (agentic REST), false = chat mode (MCP).
+          # A request can override per-call via custom_inputs.high_effort.
+          - name: GENIE_HIGH_EFFORT
+            value: ${var.genie_high_effort}
+          - name: VECTOR_SEARCH_INDEX
+            value: ${var.ai_search_index}
+          - name: LAKEBASE_AUTOSCALING_ENDPOINT
+            value_from: "lakebase_postgres"
+          - name: LAKEBASE_AGENT_MEMORY_SCHEMA
+            value: "agent_openai_memory"
+
+      # Resources which this app has access to
+      resources:
+        - name: 'experiment'
+          experiment:
+            experiment_id: ${resources.experiments.agent_traces.id}
+            permission: 'CAN_MANAGE'
+
+        - name: 'ai_search_index'
+          description: "AI Search index containing the parsed Samsung manuals"
+          uc_securable:
+            securable_full_name: ${var.ai_search_index}
+            securable_type: 'TABLE'
+            permission: 'SELECT'
+
+        - name: 'lakebase_postgres'
+          description: "Lakebase database created by this bundle for conversation history"
+          postgres:
+            branch: ${resources.postgres_projects.technical_manuals_agent_memory_db.id}/branches/production
+            database: ${resources.postgres_databases.agent_memory.id}
+            permission: CAN_CONNECT_AND_CREATE

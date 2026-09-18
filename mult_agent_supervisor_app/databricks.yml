@@ -1,0 +1,74 @@
+# Databricks Asset Bundle: multi-agent Databricks App
+# Owns the chat app, Lakebase (memory + chat history), and MLflow experiment.
+#
+# Catalog and schema are exposed as bundle variables
+bundle:
+  name: multi_agent_app
+  engine: direct
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog used for tables, the volume and the Vector Search index.
+    default: stable_classic_6kvrb7_catalog
+  schema:
+    description: Schema (database) inside the catalog.
+    default: cesar_cordoba
+  ai_search_index:
+    description: Fully qualified AI Search index queried by the orchestrator.
+    default: "stable_classic_6kvrb7_catalog.cesar_cordoba.device_manuals_knowledge_base_vs_index"
+  lakebase_project_id:
+    description: Lakebase Autoscaling project ID created by this bundle for conversation sessions.
+    default: "technical-manuals-agent-memory"
+  genie_agent_ids:
+    description: >-
+      Comma-separated Genie space ids queried in AGENT MODE (agentic REST API),
+      one orchestrator tool each. The app service principal (or the OBO user)
+      must have CAN_RUN on each space.
+    default: "01f1b02fd70118e998ac345acb33404e,01f1b2ac03fc1ec0bc7f92203f35a72d"
+  genie_agents:
+    description: >-
+      Genie spaces the app exposes as orchestrator tools AND in the app's
+      "Agents" tab (embedded iframes), as a JSON array of
+      {id, name, label?, description} objects (client-provided). Preferred over
+      genie_agent_ids: `name` is the snake_case tool name the model routes to,
+      `label` is the optional pretty display name in the Agents tab, and
+      `description` is shown both to the model and on the Agents-tab card. The
+      app service principal (or the OBO user) must have CAN_RUN on each space.
+    default: >-
+      [{"id": "01f1b02fd70118e998ac345acb33404e", "name": "samsung_manuals", "label": "Samsung Manuals Assistant", "description": "Genie space over the Samsung product manuals (PDFs). Use for natural-language questions, comparisons, and summaries about Samsung device setup, operation, features, safety, and troubleshooting."}, {"id": "01f1b2ac03fc1ec0bc7f92203f35a72d", "name": "sioas_subsidies", "label": "SIOAS Subsidy Assistant", "description": "Assistant for navigating the 2022 SIOAS subsidy justification process in Catalunya."}]
+  genie_embed_org_id:
+    description: >-
+      Workspace org id used as the `?o=` query param when building the Genie
+      embed URLs in the app's "Agents" tab. Find it in any workspace URL
+      (…?o=<org-id>). Optional for single-workspace hosts.
+    default: "7474660970783176"
+  genie_high_effort:
+    description: >-
+      Default Genie effort mode. "true" = AGENT mode (agentic REST, reasons over
+      PDFs); "false" = CHAT mode (Genie MCP, faster). A request can override this
+      per-call via custom_inputs.high_effort.
+    default: "true"
+
+targets:
+  # Default target - the environment used to build the demo.
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-stable-classic-6kvrb7.cloud.databricks.com
+    variables:
+      catalog: stable_classic_6kvrb7_catalog
+      schema: cesar_cordoba
+
+
+  prod:
+    mode: production
+    # workspace:
+    #   host: https://...
+    resources:
+      apps:
+        agent_openai_agents_sdk_multiagent:
+          name: agent-openai-multiagent

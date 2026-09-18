@@ -1,0 +1,22 @@
+version: 1
+name: "Agent - OpenAI Multiagent"
+description: "A manuals assistant built with the OpenAI Agents SDK that queries Genie and AI Search and persists conversations in Lakebase."
+
+resource_specs:
+  - name: "experiment"
+    description: "The destination experiment for traces from the orchestrator's execution."
+    experiment_spec:
+      permission: "CAN_EDIT"
+  - name: "genie_space"
+    description: "The AI/BI Genie space the orchestrator queries for natural language data questions."
+    genie_space_spec:
+      permission: "CAN_RUN"
+  - name: "ai_search_index"
+    description: "The AI Search index containing parsed product manual content."
+    uc_securable_spec:
+      securable_type: "TABLE"
+      permission: "SELECT"
+  - name: "lakebase_postgres"
+    description: "The Lakebase Autoscaling database the agent uses for persistent conversation sessions."
+    postgres_spec:
+      permission: "CAN_CONNECT_AND_CREATE"
